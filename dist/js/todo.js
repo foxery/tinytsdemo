@@ -103,17 +103,98 @@ System.register("demo", ["demo_extend", "tinyts/control/button", "tinyts/core/ti
         }
     };
 });
-System.register("todo", ["tinyts/core/tinyts", "tinyts/control/list", "tinyts/control/input"], function (exports_3, context_3) {
+System.register("listviewv_class", ["tinyts/core/tinyts", "tinyts/core/view", "tinyts/control/list"], function (exports_3, context_3) {
     "use strict";
     var __moduleName = context_3 && context_3.id;
-    var tinyts_3, list_1, input_2, KeyCode, TodoData, TodoDemo, aa;
+    var tinyts_3, view_1, list_1, DataModel, ListData, ULLI, ListviewvClassModel, aa;
     return {
         setters: [
             function (tinyts_3_1) {
                 tinyts_3 = tinyts_3_1;
             },
+            function (view_1_1) {
+                view_1 = view_1_1;
+            },
             function (list_1_1) {
                 list_1 = list_1_1;
+            }
+        ],
+        execute: function () {
+            DataModel = (function () {
+                function DataModel(Id, Name, ListData, Date) {
+                    this.Id = Id;
+                    this.Name = Name;
+                    this.ListData = ListData;
+                    this.Date = Date;
+                }
+                return DataModel;
+            }());
+            ListData = (function () {
+                function ListData(Id, Name) {
+                    this.Id = Id;
+                    this.Name = Name;
+                }
+                return ListData;
+            }());
+            ULLI = (function (_super) {
+                __extends(ULLI, _super);
+                function ULLI() {
+                    return _super !== null && _super.apply(this, arguments) || this;
+                }
+                ULLI.prototype.AfterInject = function () {
+                    var _this = this;
+                    this.li.On("click", function () {
+                        alert(_this.viewData.Id);
+                    });
+                    var data = [];
+                    data.push(new ListData(1, "子列表1"));
+                    data.push(new ListData(2, "子列表2"));
+                    this.mSubList.SetData(data);
+                };
+                __decorate([
+                    tinyts_3.v(view_1.View, ".list-item"),
+                    __metadata("design:type", typeof (_a = typeof view_1.View !== "undefined" && view_1.View) === "function" && _a || Object)
+                ], ULLI.prototype, "li", void 0);
+                __decorate([
+                    tinyts_3.v(list_1.ListView, ".mSubList"),
+                    __metadata("design:type", typeof (_b = typeof list_1.ListView !== "undefined" && list_1.ListView) === "function" && _b || Object)
+                ], ULLI.prototype, "mSubList", void 0);
+                return ULLI;
+                var _a, _b;
+            }(list_1.SubView));
+            ListviewvClassModel = (function (_super) {
+                __extends(ListviewvClassModel, _super);
+                function ListviewvClassModel() {
+                    return _super !== null && _super.apply(this, arguments) || this;
+                }
+                ListviewvClassModel.prototype.AfterInject = function () {
+                    var data = [];
+                    data.push(new DataModel(1, "a1", ["aa"], "qqq"));
+                    data.push(new DataModel(2, "a1", ["aa"], "qqq"));
+                    this.mList.SetData(data);
+                };
+                __decorate([
+                    tinyts_3.vlist(list_1.ListViewV, ULLI, ".mList"),
+                    __metadata("design:type", typeof (_a = typeof list_1.ListViewV !== "undefined" && list_1.ListViewV) === "function" && _a || Object)
+                ], ListviewvClassModel.prototype, "mList", void 0);
+                return ListviewvClassModel;
+                var _a;
+            }(tinyts_3.AncView));
+            aa = new ListviewvClassModel();
+        }
+    };
+});
+System.register("todo", ["tinyts/core/tinyts", "tinyts/control/list", "tinyts/control/input"], function (exports_4, context_4) {
+    "use strict";
+    var __moduleName = context_4 && context_4.id;
+    var tinyts_4, list_2, input_2, KeyCode, TodoData, TodoDemo, aa;
+    return {
+        setters: [
+            function (tinyts_4_1) {
+                tinyts_4 = tinyts_4_1;
+            },
+            function (list_2_1) {
+                list_2 = list_2_1;
             },
             function (input_2_1) {
                 input_2 = input_2_1;
@@ -167,16 +248,16 @@ System.register("todo", ["tinyts/core/tinyts", "tinyts/control/list", "tinyts/co
                     // this.data.unshift(new TodoData("111"));
                 };
                 __decorate([
-                    tinyts_3.v(list_1.ListView),
-                    __metadata("design:type", typeof (_a = typeof list_1.ListView !== "undefined" && list_1.ListView) === "function" && _a || Object)
+                    tinyts_4.v(list_2.ListView),
+                    __metadata("design:type", typeof (_a = typeof list_2.ListView !== "undefined" && list_2.ListView) === "function" && _a || Object)
                 ], TodoDemo.prototype, "list", void 0);
                 __decorate([
-                    tinyts_3.v(input_2.InputView),
+                    tinyts_4.v(input_2.InputView),
                     __metadata("design:type", typeof (_b = typeof input_2.InputView !== "undefined" && input_2.InputView) === "function" && _b || Object)
                 ], TodoDemo.prototype, "newItem", void 0);
                 return TodoDemo;
                 var _a, _b;
-            }(tinyts_3.AncView));
+            }(tinyts_4.AncView));
             aa = new TodoDemo();
         }
     };

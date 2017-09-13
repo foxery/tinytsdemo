@@ -15,7 +15,7 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
     return {
         setters: [],
         execute: function () {
-            UrlComparison = (function () {
+            UrlComparison = /** @class */ (function () {
                 function UrlComparison() {
                 }
                 return UrlComparison;
@@ -24,7 +24,7 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
             /**
              * url parser 解析url地址
              */
-            UrlParser = (function () {
+            UrlParser = /** @class */ (function () {
                 function UrlParser() {
                 }
                 /**
@@ -41,7 +41,22 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
                     for (i = 0; i < queries.length; i++) {
                         split = queries[i].split('=');
                         if (split[0] != "" && split[1]) {
-                            this.searchObject[split[0]] = decodeURIComponent(split[1]);
+                            var key = split[0];
+                            var val = decodeURIComponent(split[1]);
+                            if (this.searchObject[key]) {
+                                if (Array.isArray(this.searchObject[key])) {
+                                    this.searchObject[key].push(val);
+                                }
+                                else {
+                                    var temp = this.searchObject[key];
+                                    this.searchObject[key] = [];
+                                    this.searchObject[key].push(temp);
+                                    this.searchObject[key].push(val);
+                                }
+                            }
+                            else {
+                                this.searchObject[key] = val;
+                            }
                         }
                     }
                     this.protocol = parser.protocol;
@@ -51,6 +66,8 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
                     this.pathname = parser.pathname.indexOf("/") == 0 ? parser.pathname : "/" + parser.pathname;
                     this.search = parser.search;
                     this.hash = parser.hash;
+                    // 解析pathname
+                    this.segments = this.pathname.substr(1).split("/");
                     return this;
                 };
                 /**
@@ -64,9 +81,16 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
                     this.search = this.search.substr(0, this.search.length - 1);
                     this.url = "";
                     if (this.protocol) {
+                        if (!this.protocol.endsWith(":")) {
+                            this.protocol += ":";
+                        }
                         this.url += this.protocol + "//";
                     }
-                    this.url += this.host + this.pathname + this.search + this.hash;
+                    this.url += this.host;
+                    if (!isNaN(+this.port)) {
+                        this.url += ":" + this.port;
+                    }
+                    this.url += this.pathname + this.search + this.hash;
                     return this.url;
                 };
                 /**
@@ -93,13 +117,13 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
                 return UrlParser;
             }());
             exports_1("UrlParser", UrlParser);
-            HttpResponse = (function () {
+            HttpResponse = /** @class */ (function () {
                 function HttpResponse() {
                 }
                 return HttpResponse;
             }());
             exports_1("HttpResponse", HttpResponse);
-            HttpUtils = (function () {
+            HttpUtils = /** @class */ (function () {
                 function HttpUtils() {
                 }
                 /**
@@ -163,7 +187,7 @@ System.register("tinyts/core/http", [], function (exports_1, context_1) {
                 return HttpUtils;
             }());
             exports_1("HttpUtils", HttpUtils);
-            Router = (function () {
+            Router = /** @class */ (function () {
                 function Router() {
                     var me = this;
                     window.onpopstate = function (event) {
@@ -273,7 +297,7 @@ System.register("tinyts/core/servicepool", [], function (exports_2, context_2) {
                 * 二、引用某种算法自动释放服务（LRU）
              *
              */
-            ServicePool = (function () {
+            ServicePool = /** @class */ (function () {
                 function ServicePool() {
                     this.instances = {};
                 }
@@ -320,7 +344,7 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
             /**
              * injectModel 视图注入模型
              */
-            injectModel = (function () {
+            injectModel = /** @class */ (function () {
                 function injectModel() {
                 }
                 return injectModel;
@@ -329,7 +353,7 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
             /**
              * serviceInjectModel 服务注入模型
              */
-            serviceInjectModel = (function () {
+            serviceInjectModel = /** @class */ (function () {
                 function serviceInjectModel() {
                 }
                 return serviceInjectModel;
@@ -358,14 +382,14 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                 BindType[BindType["MODELTOVIEW"] = 1] = "MODELTOVIEW";
                 BindType[BindType["VIEWTOMODEL"] = 2] = "VIEWTOMODEL";
             })(BindType || (BindType = {}));
-            DataBindExpressionModel = (function () {
+            DataBindExpressionModel = /** @class */ (function () {
                 function DataBindExpressionModel(Expression, ViewInstance) {
                     this.Expression = Expression;
                     this.ViewInstance = ViewInstance;
                 }
                 return DataBindExpressionModel;
             }());
-            TreeNode = (function () {
+            TreeNode = /** @class */ (function () {
                 function TreeNode() {
                     this.Child = [];
                     this.Views = [];
@@ -452,10 +476,21 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                         for (var i = 0; i < this.Views.length; i++) {
                             var temp_view = this.Views[i];
                             if (temp_view.ViewInstance && temp_view.Type == BindType.OVONIC || temp_view.Type == BindType.VIEWTOMODEL) {
-                                var element = temp_view.ViewInstance.GetJQueryInstance().context;
+                                var element = temp_view.ViewInstance.GetJQueryInstance()[0];
                                 if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-                                    temp_view.ViewInstance.On("compositionend", function () {
+                                    var lock = false;
+                                    temp_view.ViewInstance.On("compositionstart", function () {
+                                        lock = true;
                                         temp[_this.Expression] = _this.Views[i].ViewInstance.Value();
+                                    });
+                                    temp_view.ViewInstance.On("compositionend", function () {
+                                        lock = false;
+                                        temp[_this.Expression] = _this.Views[i].ViewInstance.Value();
+                                    });
+                                    temp_view.ViewInstance.On("input", function () {
+                                        if (!lock) {
+                                            temp[_this.Expression] = _this.Views[i].ViewInstance.Value();
+                                        }
                                     });
                                     break;
                                 }
@@ -499,7 +534,7 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
             /**
              * View 视图基类
              */
-            View = (function () {
+            View = /** @class */ (function () {
                 function View() {
                 }
                 /**
@@ -523,16 +558,20 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                  * Name 返回当前视图在viewmodel的属性名
                  */
                 View.prototype.Name = function () {
-                    return name;
+                    return this.name;
                 };
                 /**
                  * IsMultiparted 返回当前视图是否绑定多个元素
                  */
                 View.prototype.IsMultiparted = function () {
+                    if (!this.multipart) {
+                        return false;
+                    }
                     return this.multipart;
                 };
                 /**
                  * PropertyName 获取属性名
+                 * @returns 属性名
                  */
                 View.prototype.PropertyName = function () {
                     return this.propertyName;
@@ -561,8 +600,12 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                  * LoadView 建立视图与DOM之间的关联关系
                  * 初始化视图属性
                  * @param parent JQuery对象或选择器 父元素,若指定该参数,则元素查找范围限制在父元素内
+                 * @returns 是否绑定成功
                  */
                 View.prototype.LoadView = function (parent) {
+                    if (this.state != undefined && this.state != ViewState.UNLOAD) {
+                        console.warn("it's deprecated to call loadview twice!");
+                    }
                     // 优先使用selector绑定元素
                     if (this.selector) {
                         if (parent) {
@@ -578,7 +621,9 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                         }
                     }
                     else {
+                        this.state = ViewState.LOADFAIL;
                         console.warn("[view]" + this.name + " has not set selector!");
+                        return false;
                     }
                     var matchedElementLength = this.target.length;
                     if (matchedElementLength > 0) {
@@ -616,6 +661,10 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                         console.warn("[view]" + this.name + " bind null html element!");
                         return false;
                     }
+                };
+                View.prototype.BindJQueryInstance = function (instance) {
+                    this.state = ViewState.LOADSUCC;
+                    this.target = instance;
                 };
                 /**
                  * GetJQueryInstance 获取jquery对象
@@ -688,12 +737,15 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                 View.prototype.Off = function (eventName) {
                     if (this.target != null) {
                         this.target.off(eventName);
-                        if (eventName) {
-                            this.eventList[eventName] = [];
-                        }
-                        else {
-                            this.eventList = {};
-                        }
+                    }
+                    if (!this.eventList) {
+                        return;
+                    }
+                    if (eventName) {
+                        this.eventList[eventName] = [];
+                    }
+                    else {
+                        this.eventList = {};
                     }
                 };
                 /**
@@ -765,10 +817,6 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                 View.prototype.DataBindExpression = function () {
                     return this.bindingExpression;
                 };
-                /**
-                 * DataBind 返回数据绑定第index级属性
-                 * @param index
-                 */
                 View.prototype.DataBind = function () {
                     return this.bindings;
                 };
@@ -797,13 +845,13 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                                 if (views) {
                                     for (var j = 0; j < views.length; j++) {
                                         var view = views[j];
-                                        var viewInstance = new view.creator();
+                                        var viewInstance = new ((_a = view.creator).bind.apply(_a, [void 0].concat(view.params)))();
                                         if (viewInstance instanceof View) {
                                             viewInstance.SetSelector(view.selector);
                                             viewInstance.SetName(view.propertyName);
                                             // 检测当前视图是否存在,如果不存在,则不限制下一级视图注入时的parent属性
                                             if (this.state == ViewState.LOADSUCC && !this.multipart) {
-                                                viewInstance.LoadView(this.selector);
+                                                viewInstance.LoadView(this.target);
                                             }
                                             else {
                                                 viewInstance.LoadView();
@@ -831,8 +879,6 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                                         }
                                         instance[view.propertyName] = viewInstance;
                                     }
-                                    // views注入完成,根据views生成数据绑定树
-                                    this.ResolveDataBinding(dataBindingExpressions);
                                 }
                                 // 注入服务
                                 var services = temp["services"];
@@ -845,7 +891,10 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                             }
                         }
                     }
+                    // views注入完成,根据views生成数据绑定树
+                    this.ResolveDataBinding(dataBindingExpressions);
                     this.AfterInject();
+                    var _a;
                 };
                 /**
                  * ResolveDataBinding 解析数据绑定模版语法
@@ -871,17 +920,26 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
                         Object.defineProperty(this, root.Child[i].Expression, Object.getOwnPropertyDescriptor(root.Child[i].BuildProxy(), root.Child[i].Expression));
                     }
                 };
-                // hooks
+                /**
+                 * BeforeInject 该方法将会在Inject前被调用,请在子类重写改方法以实现hooks
+                 */
                 View.prototype.BeforeInject = function () { };
+                /**
+                 * AfterInject 该方法将会在Inject后被调用,请在子类重写改方法以实现hooks
+                 */
                 View.prototype.AfterInject = function () { };
                 return View;
             }());
             exports_3("View", View);
-            ViewG = (function (_super) {
+            ViewG = /** @class */ (function (_super) {
                 __extends(ViewG, _super);
                 function ViewG() {
                     return _super !== null && _super.apply(this, arguments) || this;
                 }
+                /**
+                 * SetContext 设置ViewG的上下文
+                 * @param context 上下文
+                 */
                 ViewG.prototype.SetContext = function (context) {
                     this.context = context;
                 };
@@ -893,7 +951,7 @@ System.register("tinyts/core/view", ["tinyts/core/http", "tinyts/core/servicepoo
              * 同步模式下,html string直接通过GetViewString方法返回
              * 异步模式下
              */
-            ViewV = (function (_super) {
+            ViewV = /** @class */ (function (_super) {
                 __extends(ViewV, _super);
                 function ViewV() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -948,7 +1006,7 @@ System.register("tinyts/control/text", ["tinyts/core/view"], function (exports_4
              * TextView 用于文本显示的控件
              * 这里的文本指<tag>文本内容</tag>中的文本内容
              */
-            TextView = (function (_super) {
+            TextView = /** @class */ (function (_super) {
                 __extends(TextView, _super);
                 function TextView() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -988,7 +1046,7 @@ System.register("tinyts/control/button", ["tinyts/control/text"], function (expo
             }
         ],
         execute: function () {
-            Button = (function (_super) {
+            Button = /** @class */ (function (_super) {
                 __extends(Button, _super);
                 function Button() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1023,7 +1081,7 @@ System.register("tinyts/core/meta", [], function (exports_6, context_6) {
             /**
              * Meta 实现一个模版语法解析的类
              */
-            Meta = (function () {
+            Meta = /** @class */ (function () {
                 function Meta() {
                 }
                 /**
@@ -1046,7 +1104,7 @@ System.register("tinyts/core/meta", [], function (exports_6, context_6) {
 System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"], function (exports_7, context_7) {
     "use strict";
     var __moduleName = context_7 && context_7.id;
-    var view_2, meta_1, ArrayProxy, ListView, PAGEMODE, PageManager;
+    var view_2, meta_1, ArrayProxy, ListView, ListViewV, SubView, PAGEMODE, PageManager;
     return {
         setters: [
             function (view_2_1) {
@@ -1060,7 +1118,7 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
             /**
              * ArrayProxy<T> 列表数据操作接口
              */
-            ArrayProxy = (function (_super) {
+            ArrayProxy = /** @class */ (function (_super) {
                 __extends(ArrayProxy, _super);
                 function ArrayProxy(data, context) {
                     var _this = _super.apply(this, data) || this;
@@ -1106,17 +1164,13 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                     this.context.RefreshView();
                     return res;
                 };
-                ArrayProxy.prototype.concat = function () {
-                    var items = [];
-                    for (var _i = 0; _i < arguments.length; _i++) {
-                        items[_i] = arguments[_i];
-                    }
-                    var temp = [];
-                    for (var i = 0; i < this.length; i++) {
-                        temp[i] = this[i];
-                    }
-                    return temp.concat.apply(temp, items);
-                };
+                // concat<U extends T[]>(...items: U[]): T[] {
+                //     var temp = [];
+                //     for (var i = 0; i < this.length; i++) {
+                //         temp[i] = this[i];
+                //     }
+                //     return temp.concat(...items);
+                // }
                 ArrayProxy.prototype.splice = function (start, deleteCount) {
                     var items = [];
                     for (var _i = 2; _i < arguments.length; _i++) {
@@ -1137,7 +1191,7 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                 return ArrayProxy;
             }(Array));
             exports_7("ArrayProxy", ArrayProxy);
-            ListView = (function (_super) {
+            ListView = /** @class */ (function (_super) {
                 __extends(ListView, _super);
                 function ListView() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1159,6 +1213,18 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                             this.viewString.push(this.getTemplateString(this.target));
                         }
                         this.ClearView();
+                        // 分页器
+                        var pagable = this.target.attr("data-pagable");
+                        if (pagable) {
+                            this.pageManager = new PageManager();
+                            this.pageManager.SetContext(this);
+                        }
+                        if (pagable == "sync") {
+                            this.pageManager.SetPageMode(PAGEMODE.SYNC);
+                        }
+                        else if (pagable == "async") {
+                            this.pageManager.SetPageMode(PAGEMODE.ASYNC);
+                        }
                     }
                     return succ;
                 };
@@ -1219,13 +1285,29 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                     this.mData = new ArrayProxy(data, this);
                     this.RefreshView();
                 };
+                /**
+                 * GetData returns an array with the copy of data proxy's data
+                 */
                 ListView.prototype.GetData = function () {
-                    return this.mData;
+                    if (!this.mData) {
+                        return [];
+                    }
+                    var temp = [];
+                    for (var i = 0; i < this.mData.length; i++) {
+                        temp.push(this.mData[i]);
+                    }
+                    return temp;
                 };
                 ListView.prototype.SetValue = function (data) {
                     this.SetData(data);
                 };
+                /**
+                 * Value returns the array proxy object.
+                 */
                 ListView.prototype.Value = function () {
+                    if (!this.mData) {
+                        this.mData = new ArrayProxy([], this);
+                    }
                     return this.mData;
                 };
                 /**
@@ -1247,16 +1329,15 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                  * @param (仅多元素绑定时)元素索引
                 */
                 ListView.prototype.GetView = function (dataIndex, elemIndex) {
-                    var data = this.mData[dataIndex];
+                    var data = $.extend(true, {}, this.mData[dataIndex]);
                     if (this.getTemplpateModel) {
-                        data = this.getTemplpateModel(data);
+                        data = this.getTemplpateModel(data, dataIndex);
                     }
                     if (elemIndex == null) {
                         elemIndex = 0;
                     }
                     return meta_1.Meta.Resolve(this.viewString[elemIndex], data);
                 };
-                ;
                 /**
                  * createView 创建一个视图的html代码,并添加到当前view的最后面
                  * @param index 需要创建的view的索引
@@ -1291,6 +1372,17 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                  */
                 ListView.prototype.GetChildren = function () {
                     return this.target.children();
+                };
+                /**
+                 * Traverse 遍历列表(需要保证GetChildren方法有效)
+                 * @param handler 遍历函数,返回false表示停止遍历
+                 */
+                ListView.prototype.Traverse = function (handler) {
+                    this.GetChildren().each(function (index, elem) {
+                        if (!handler(index, elem)) {
+                            return false;
+                        }
+                    });
                 };
                 /**
                  * [override] ClearView 清空列表部分视图
@@ -1331,9 +1423,10 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                     return this.pageManager;
                 };
                 /**
-                 * SetPageSize 设置每页条数,显示到页面上
+                 * SetPageSize 设置每页条数,请重写此方法来修改页面上的显示
                  */
                 ListView.prototype.SetPageSize = function (pagesize) {
+                    this.pageSize = pagesize;
                 };
                 /**
                  * SetCurPage 设置当前页(用于展示)
@@ -1346,14 +1439,69 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                 ListView.prototype.SetPageCount = function (count) {
                 };
                 /**
-                 * GetPageSize 获取每页条数
+                 * GetPageSize 获取每页条数,请重写此方法以返回用户自定义的值
                  */
                 ListView.prototype.GetPageSize = function () {
-                    return 0;
+                    return this.pageSize;
                 };
                 return ListView;
             }(view_2.View));
             exports_7("ListView", ListView);
+            ListViewV = /** @class */ (function (_super) {
+                __extends(ListViewV, _super);
+                function ListViewV(creator) {
+                    var _this = _super.call(this) || this;
+                    _this.creator = creator;
+                    _this.viewInstances = [];
+                    return _this;
+                }
+                /**
+                 * createView 创建一个视图的html代码,并添加到当前view的最后面
+                 * @param index 需要创建的view的索引
+                 */
+                ListViewV.prototype.createView = function (index) {
+                    var _this = this;
+                    if (this.multipart) {
+                        this.target.each(function (i, elem) {
+                            _this.append(_this.GetView(index, i), i);
+                        });
+                    }
+                    else {
+                        this.append(this.GetView(index, 0));
+                        var viewInstance = new this.creator();
+                        viewInstance.BindJQueryInstance(this.GetChildren().eq(index));
+                        viewInstance.Inject();
+                        viewInstance.SetViewData(this.mData[index]);
+                        this.viewInstances.push(viewInstance);
+                    }
+                };
+                ListViewV.prototype.GetViewInstance = function (index) {
+                    return this.viewInstances[index];
+                };
+                /**
+                 * [override] ClearView 清空列表部分视图
+                 */
+                ListViewV.prototype.ClearView = function () {
+                    this.target.html("");
+                    this.viewInstances = [];
+                };
+                return ListViewV;
+            }(ListView));
+            exports_7("ListViewV", ListViewV);
+            SubView = /** @class */ (function (_super) {
+                __extends(SubView, _super);
+                function SubView() {
+                    return _super !== null && _super.apply(this, arguments) || this;
+                }
+                SubView.prototype.SetViewData = function (data) {
+                    this.viewData = data;
+                };
+                SubView.prototype.ViewData = function () {
+                    return this.viewData;
+                };
+                return SubView;
+            }(view_2.View));
+            exports_7("SubView", SubView);
             // PAGEMODE 分页模式
             // SYNC 同步分页
             // ASYNC 异步分页
@@ -1361,8 +1509,7 @@ System.register("tinyts/control/list", ["tinyts/core/view", "tinyts/core/meta"],
                 PAGEMODE[PAGEMODE["SYNC"] = 0] = "SYNC";
                 PAGEMODE[PAGEMODE["ASYNC"] = 1] = "ASYNC";
             })(PAGEMODE || (PAGEMODE = {}));
-            ;
-            PageManager = (function () {
+            PageManager = /** @class */ (function () {
                 /**
                  * @param instance 同步模式时,数据会被设置到该instance
                  */
@@ -1542,7 +1689,7 @@ System.register("tinyts/control/input", ["tinyts/control/text"], function (expor
              * properties
              *      data-accept-button string jquery selector
              */
-            InputView = (function (_super) {
+            InputView = /** @class */ (function (_super) {
                 __extends(InputView, _super);
                 function InputView() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1557,10 +1704,12 @@ System.register("tinyts/control/input", ["tinyts/control/text"], function (expor
                         }
                         this.On("keypress", function (args) {
                             if (args.which == 13) {
-                                if (_this.acceptBtn.prop("disabled")) {
-                                }
-                                else {
-                                    _this.acceptBtn.click();
+                                if (_this.acceptBtn) {
+                                    if (_this.acceptBtn.prop("disabled")) {
+                                    }
+                                    else {
+                                        _this.acceptBtn.click();
+                                    }
                                 }
                             }
                         });
@@ -1580,6 +1729,8 @@ System.register("tinyts/control/input", ["tinyts/control/text"], function (expor
                 };
                 InputView.prototype.SetValue = function (v) {
                     this.target.val(v);
+                    // it causes stack overflow
+                    // this.Trigger("input");
                 };
                 /**
                  * Clear 清空值
@@ -1604,7 +1755,7 @@ System.register("tinyts/control/choice", ["tinyts/control/input"], function (exp
             }
         ],
         execute: function () {
-            ChoiceView = (function (_super) {
+            ChoiceView = /** @class */ (function (_super) {
                 __extends(ChoiceView, _super);
                 function ChoiceView() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1641,7 +1792,7 @@ System.register("tinyts/control/dialog", ["tinyts/core/view"], function (exports
              * data-draggable
              * data-close 关闭按钮的选择器(限定在dialog内) click事件
              */
-            Dialog = (function (_super) {
+            Dialog = /** @class */ (function (_super) {
                 __extends(Dialog, _super);
                 function Dialog() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1664,9 +1815,13 @@ System.register("tinyts/control/dialog", ["tinyts/core/view"], function (exports
                     }
                     return succ;
                 };
+                /**
+                 * Hide 隐藏Dialog
+                 * 当target初始display状态是none,且定义在style样式表中时,无法正确Show
+                 */
                 Dialog.prototype.Hide = function () {
                     this.display = this.target.css("display");
-                    if (!this.display) {
+                    if (!this.display || this.display == "none") {
                         this.display = "";
                     }
                     this.target.css("display", "none");
@@ -1722,7 +1877,7 @@ System.register("tinyts/control/table", ["tinyts/control/list"], function (expor
             }
         ],
         execute: function () {
-            Table = (function (_super) {
+            Table = /** @class */ (function (_super) {
                 __extends(Table, _super);
                 function Table() {
                     return _super !== null && _super.apply(this, arguments) || this;
@@ -1949,6 +2104,37 @@ System.register("tinyts/core/tinyts", ["tinyts/core/view"], function (exports_13
         };
     }
     exports_13("v", v);
+    function vlist(c, v, selector) {
+        /**
+         * 该函数运行在ListViewV上
+         * @param target View实例
+         * @param decoratedPropertyName 属性名
+         */
+        return function (target, decoratedPropertyName) {
+            var targetType = target.constructor;
+            // 目标view的名称
+            var name = target.constructor.toString().match(/^function\s*([^\s(]+)/)[1];
+            if (!targetType.hasOwnProperty("__inject__")) {
+                targetType["__inject__"] = {};
+            }
+            if (!targetType["__inject__"][name]) {
+                targetType["__inject__"][name] = {
+                    constructor: target.constructor
+                };
+            }
+            if (!targetType["__inject__"][name]["views"]) {
+                targetType["__inject__"][name]["views"] = [];
+            }
+            var temp = new view_5.injectModel();
+            temp.creator = c;
+            temp.propertyName = decoratedPropertyName;
+            temp.selector = selector == null ? "#" + decoratedPropertyName : selector;
+            temp.params = [];
+            temp.params.push(v);
+            targetType["__inject__"][name]["views"].push(temp);
+        };
+    }
+    exports_13("vlist", vlist);
     /**
      * f decorator 用于声明虚拟视图的html文件
      * @param url html文件的url地址
@@ -2011,7 +2197,7 @@ System.register("tinyts/core/tinyts", ["tinyts/core/view"], function (exports_13
              * tinyts在完成注入后,会去除这个style以显示container的内容
              * 注意:请尽量不要在container上加上display:none以外的style属性,可能会引起不可预知的错误
              */
-            AncView = (function (_super) {
+            AncView = /** @class */ (function (_super) {
                 __extends(AncView, _super);
                 /**
                  * AncView 祖先视图,包含注入功能
@@ -2051,9 +2237,117 @@ System.register("tinyts/core/tinyts", ["tinyts/core/view"], function (exports_13
         }
     };
 });
-System.register("tinyts/utils/cookie", [], function (exports_14, context_14) {
+System.register("tinyts/core/router", ["tinyts/core/http"], function (exports_14, context_14) {
     "use strict";
     var __moduleName = context_14 && context_14.id;
+    var http_2, Router;
+    return {
+        setters: [
+            function (http_2_1) {
+                http_2 = http_2_1;
+            }
+        ],
+        execute: function () {
+            Router = /** @class */ (function () {
+                function Router() {
+                    var me = this;
+                    this.routerMap = {};
+                    window.onpopstate = function (event) {
+                        var state = event.state;
+                        me.invokeRoute(state.url, { url: state.url, data: state.data });
+                    };
+                }
+                /**
+                 * GoBack 返回上一页
+                 */
+                Router.prototype.GoBack = function () {
+                    window.history.back();
+                };
+                /**
+                 * GoForward 前往下一页
+                 */
+                Router.prototype.GoForward = function () {
+                    window.history.forward();
+                };
+                /**
+                 * GoTo 修改当前url为指定url,并触发context的OnRouteChange事件
+                 * @param url 指定url
+                 * @param data 可能存在的参数
+                 */
+                Router.prototype.GoTo = function (url, data, param) {
+                    //首先判断路由是否有变化,如果没有变化,则不作跳转
+                    var res = http_2.UrlParser.CompareUrls(window.location.href, url);
+                    if (res.Complete) {
+                        return;
+                    }
+                    var me = this;
+                    var stateData = { url: url, data: data, param: param };
+                    if (window.history.pushState) {
+                        window.history.pushState(stateData, "", url);
+                    }
+                    this.invokeRoute(url, { url: url, data: data });
+                };
+                /**
+                 * ReplaceCurrentState 修改当前router的状态(无历史记录)
+                 * @param url 指定的url
+                 * @param data 当前router的数据
+                 */
+                Router.prototype.ReplaceCurrentState = function (url, data, param) {
+                    var me = this;
+                    var stateData = { url: url, data: data, param: param };
+                    if (window.history.replaceState) {
+                        window.history.replaceState(stateData, "", url);
+                    }
+                    this.invokeRoute(url, { url: url, data: data });
+                };
+                /**
+                 * ReplaceCurrentStateWithParam 修改当前router的状态,并将data存储在url中
+                 */
+                Router.prototype.ReplaceCurrentStateWithParam = function (url, data, changeRoute) {
+                    var me = this;
+                    // 将data添加到url中
+                    var xx = new http_2.UrlParser();
+                    xx.Parse(url);
+                    xx.searchObject = $.extend(xx.searchObject, data);
+                    var url2 = xx.Generate();
+                    var stateData = { url: url, data: {} };
+                    if (window.history.replaceState) {
+                        window.history.replaceState(stateData, "", url2);
+                    }
+                    if (changeRoute) {
+                        this.routerMap[url]({ url: url2, data: {} });
+                    }
+                };
+                Router.prototype.invokeRoute = function (url, data) {
+                    if (this.routerMap[url]) {
+                        this.routerMap[url](data);
+                        return;
+                    }
+                    var parser = new http_2.UrlParser();
+                    parser.Parse(url);
+                    var tempUrl = parser.pathname.toLowerCase();
+                    if (this.routerMap[tempUrl]) {
+                        this.routerMap[tempUrl](data);
+                        return;
+                    }
+                    console.error("route not found!");
+                };
+                Router.prototype.AddRouter = function (url, func) {
+                    url = url.toLowerCase();
+                    if (this.routerMap[url]) {
+                        console.warn("router " + url + " already exist, overwrite it!");
+                    }
+                    this.routerMap[url] = func;
+                };
+                return Router;
+            }());
+            exports_14("Router", Router);
+        }
+    };
+});
+System.register("tinyts/utils/cookie", [], function (exports_15, context_15) {
+    "use strict";
+    var __moduleName = context_15 && context_15.id;
     var Cookie, CookieInstance;
     return {
         setters: [],
@@ -2061,7 +2355,7 @@ System.register("tinyts/utils/cookie", [], function (exports_14, context_14) {
             /**
              * refrence to jquery.cookie
              */
-            Cookie = (function () {
+            Cookie = /** @class */ (function () {
                 function Cookie() {
                 }
                 /**
@@ -2124,18 +2418,18 @@ System.register("tinyts/utils/cookie", [], function (exports_14, context_14) {
                 };
                 return Cookie;
             }());
-            exports_14("CookieInstance", CookieInstance = new Cookie());
+            exports_15("CookieInstance", CookieInstance = new Cookie());
         }
     };
 });
-System.register("tinyts/utils/date", [], function (exports_15, context_15) {
+System.register("tinyts/utils/date", [], function (exports_16, context_16) {
     "use strict";
-    var __moduleName = context_15 && context_15.id;
+    var __moduleName = context_16 && context_16.id;
     var TsDate;
     return {
         setters: [],
         execute: function () {
-            TsDate = (function () {
+            TsDate = /** @class */ (function () {
                 function TsDate(dateString) {
                     if (!dateString) {
                         // 获取当前时间
@@ -2151,7 +2445,6 @@ System.register("tinyts/utils/date", [], function (exports_15, context_15) {
                             for (var i = 0, L = day.length; i < L; i++) {
                                 day[i] = parseInt(day[i], 10) || 0;
                             }
-                            ;
                             day[1] -= 1;
                             day = new Date(Date.UTC.apply(Date, day));
                             if (!day.getDate())
@@ -2181,7 +2474,7 @@ System.register("tinyts/utils/date", [], function (exports_15, context_15) {
                 TsDate.fromISO = function (s) {
                     var temp = new TsDate(s);
                     if (!s) {
-                        temp.date = null;
+                        return null;
                     }
                     return temp;
                 };
@@ -2208,13 +2501,13 @@ System.register("tinyts/utils/date", [], function (exports_15, context_15) {
                 };
                 return TsDate;
             }());
-            exports_15("TsDate", TsDate);
+            exports_16("TsDate", TsDate);
         }
     };
 });
-System.register("tinyts/utils/time", [], function (exports_16, context_16) {
+System.register("tinyts/utils/time", [], function (exports_17, context_17) {
     "use strict";
-    var __moduleName = context_16 && context_16.id;
+    var __moduleName = context_17 && context_17.id;
     var Time, CountDown;
     return {
         setters: [],
@@ -2222,7 +2515,7 @@ System.register("tinyts/utils/time", [], function (exports_16, context_16) {
             /**
              * Time 时间转换
              */
-            Time = (function () {
+            Time = /** @class */ (function () {
                 function Time() {
                 }
                 Time.prototype.SetDay = function (d) {
@@ -2265,11 +2558,11 @@ System.register("tinyts/utils/time", [], function (exports_16, context_16) {
                 };
                 return Time;
             }());
-            exports_16("Time", Time);
+            exports_17("Time", Time);
             /**
              * CountDown 倒计时
              */
-            CountDown = (function () {
+            CountDown = /** @class */ (function () {
                 function CountDown() {
                 }
                 /**
@@ -2383,7 +2676,7 @@ System.register("tinyts/utils/time", [], function (exports_16, context_16) {
                 };
                 return CountDown;
             }());
-            exports_16("CountDown", CountDown);
+            exports_17("CountDown", CountDown);
         }
     };
 });
